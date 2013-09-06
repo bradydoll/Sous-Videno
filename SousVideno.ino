@@ -489,7 +489,7 @@ void loop()
 			displayMenu(TUNING);
 			break;
 		case TUNE_KP:
-			setValue(false, 1, true, TUNING);
+			setValue(false, 0, true, TUNING);
 			break;
 		case TUNE_KI:
 		case TUNE_KD:
@@ -622,8 +622,8 @@ void changeMode( uint8_t newMode )
 			prevValue = changeValue = Kp;
 			selected = 2;
 			lcd.clear();
-			x = (CHARS - 13) / 2;
-			printLargeNumber(changeValue, 1, true);
+			x = (CHARS - 12) / 2;
+			printLargeNumber(changeValue, 0, true);
 			prevFlash = -1;
 			break;
 		case TUNE_KI:
@@ -1034,6 +1034,7 @@ void doControl() {
 		Serial.print(Input);
 		Serial.print(",");
 		Serial.print(Output);
+		lastLogTime = currentMillis;
 	}
 #endif
 }
@@ -1092,7 +1093,7 @@ void setValue( bool temperature, uint8_t decimalPlaces, bool leadingZero, uint8_
 				bool down = checkButton(BUTTON_DOWN);
 
 				if (up || down) {
-					uint8_t digits[4];
+					int8_t digits[4];
 					uint16_t tempInt = int(changeValue);
 
 					if (2 == decimalPlaces) {
@@ -1100,11 +1101,16 @@ void setValue( bool temperature, uint8_t decimalPlaces, bool leadingZero, uint8_
 						digits[1] = tempInt % 10;
 						digits[2] = int(changeValue * 10) % 10;
 						digits[3] = int(changeValue * 100) % 10;
-					} else {
+					} else if (1 == decimalPlaces) {
 						digits[0] = (tempInt / 100) % 10;
 						digits[1] = (tempInt / 10) % 10;
 						digits[2] = tempInt % 10;
 						digits[3] = int(changeValue * 10) % 10;
+					} else {//if (0 == decimalPlaces) {
+						digits[0] = (tempInt / 1000) % 10;
+						digits[1] = (tempInt / 100) % 10;
+						digits[2] = (tempInt / 10) % 10;
+						digits[3] = tempInt % 10;
 					}
 
 					// Increment the section
@@ -1124,8 +1130,10 @@ void setValue( bool temperature, uint8_t decimalPlaces, bool leadingZero, uint8_
 					// Rebuild the full value
 					if (2 == decimalPlaces) {
 						changeValue = (digits[0] * 10) + digits[1] + (float(digits[2]) / 10) + (float(digits[3]) / 100);
-					} else {
+					} else if (1 == decimalPlaces) {
 						changeValue = (digits[0] * 100) + (digits[1] * 10) + digits[2] + (float(digits[3]) / 10);
+					} else {//if (0 == decimalPlaces) {
+						changeValue = (digits[0] * 1000) + (digits[1] * 100) + (digits[2] * 10) + digits[3];
 					}
 				}
 			}
@@ -1159,6 +1167,9 @@ void setValue( bool temperature, uint8_t decimalPlaces, bool leadingZero, uint8_
 		offset = 1;
 	} else {
 		uint8_t len = (leadingZero) ? 13 : 10;
+		if (0 == decimalPlaces) {
+			len--;
+		}
 		offset = (CHARS - len) / 2;
 	}
 
@@ -1318,9 +1329,8 @@ void FinishAutoTune()
 void flashLargeDigit( float num, uint8_t digit, uint8_t offset, uint8_t decimalPlaces, bool leadingZero )
 {
 	// Check if the flashed digit has changed or the flash time has elapsed
-	if (digit != prevFlash || (currentMillis - previousFlash) > flashInterval)
-	{
-		uint8_t divisor;
+	if (digit != prevFlash || (currentMillis - previousFlash) > flashInterval) {
+		uint16_t divisor;
 		
 		// Check if the flashed digit has changed
 		if (digit != prevFlash) {
@@ -1341,7 +1351,7 @@ void flashLargeDigit( float num, uint8_t digit, uint8_t offset, uint8_t decimalP
 					} else if (1 == prevFlash) {
 						printLargeDigit(int(num) % 10);
 					}
-				} else {
+				} else if (1 == decimalPlaces) {
 					if (3 == prevFlash) {
 						x++;
 						printLargeDigit(int(num * 10) % 10);
@@ -1349,6 +1359,9 @@ void flashLargeDigit( float num, uint8_t digit, uint8_t offset, uint8_t decimalP
 						divisor = (0 == prevFlash) ? 100 : (1 == prevFlash) ? 10 : 1;
 						printLargeDigit((int(num) / divisor) % 10);
 					}
+				} else {//if (0 == decimalPlaces) {
+					divisor = (0 == prevFlash) ? 1000 : (1 == prevFlash) ? 100 : (2 == prevFlash) ? 10 : 1;
+					printLargeDigit((int(num) / divisor) % 10);
 				}
 			}
 			flashed = false;
@@ -1366,8 +1379,10 @@ void flashLargeDigit( float num, uint8_t digit, uint8_t offset, uint8_t decimalP
 			if (2 == decimalPlaces && !leadingZero) {
 				x -= 3;
 			}
-			if (3 == digit || (2 == decimalPlaces && 2 == digit)) {
-				x++;
+			if (0 != decimalPlaces) {
+				if (3 == digit || (2 == decimalPlaces && 2 == digit)) {
+					x++;
+				}
 			}
 			// Clear the digit
 			customChar( blank );
@@ -1386,7 +1401,7 @@ void flashLargeDigit( float num, uint8_t digit, uint8_t offset, uint8_t decimalP
 				} else if (1 == digit) {
 					printLargeDigit(int(num) % 10);
 				}
-			} else {
+			} else if (1 == decimalPlaces) {
 				if (3 == digit) {
 					x++;
 					printLargeDigit(int(num * 10) % 10);
@@ -1394,6 +1409,9 @@ void flashLargeDigit( float num, uint8_t digit, uint8_t offset, uint8_t decimalP
 					divisor = (0 == digit) ? 100 : (1 == digit) ? 10 : 1;
 					printLargeDigit((int(num) / divisor) % 10);
 				}
+			} else {//if (0 == decimalPlaces) {
+				divisor = (0 == prevFlash) ? 1000 : (1 == prevFlash) ? 100 : (2 == prevFlash) ? 10 : 1;
+				printLargeDigit((int(num) / divisor) % 10);
 			}
 		}
 
@@ -1548,44 +1566,56 @@ void printLargeNumber( float num, uint8_t decimalPlaces, bool leadingZero )
 	uint8_t decimal;
 	uint16_t tempNum = int(num);
 
-	if (num >= 100) {
+	if (num >= 1000) {
+		digits[curDigit] = (tempNum / 1000) % 10;
+		curDigit++;
+	} else if (num >= 100 && 0 != decimalPlaces) {
 		digits[curDigit] = (tempNum / 100) % 10;
 		curDigit++;
-	} else if (num < 10 || (num > 10 && 1 == decimalPlaces)) {
+	} else if (num < 10 || (num > 10 && (1 == decimalPlaces || 0 == decimalPlaces)) || (10 == num && 0 == decimalPlaces)) {
 		digits[curDigit] = 0;
 		curDigit++;
 	}
 
-	if (num >= 10) {
+	if (num >= 1000 || 0 == decimalPlaces && num >= 100) {
+		digits[curDigit] = (tempNum / 100) % 10;
+		curDigit++;
+	} else if (num >= 10 && 0 != decimalPlaces) {
 		digits[curDigit] = (tempNum / 10) % 10;
 		curDigit++;
-	} else if (num < 10 && 1 == decimalPlaces) {
+	} else if ((num < 10 && (1 == decimalPlaces || 0 == decimalPlaces)) || (num >= 10 && 0 == decimalPlaces)) {
 		digits[curDigit] = 0;
 		curDigit++;
 	}
-	digits[curDigit] = tempNum % 10;
-	curDigit++;
 
-	decimal = curDigit;
+	if (0 == decimalPlaces) {
+		digits[curDigit] = (tempNum / 10) % 10;
+		curDigit++;
+		digits[curDigit] = tempNum % 10;
+	} else {
+		digits[curDigit] = tempNum % 10;
+		curDigit++;
+		decimal = curDigit;
+		digits[curDigit] = int(num * 10) % 10;
 
-	digits[curDigit] = int(num * 10) % 10;
-	int roundUp;
-	if (curDigit == 3) {
-		roundUp = int(num * 100) % 10;
-		// Round up the last digit
-		if (roundUp > 4) {
-			digits[3]++;
-		}
-	}
-	curDigit++;
-
-	if (curDigit < 4) {
-		digits[curDigit] = int(num * 100) % 10;
+		int roundUp;
 		if (curDigit == 3) {
-			roundUp = int(num * 1000) % 10;
+			roundUp = int(num * 100) % 10;
 			// Round up the last digit
 			if (roundUp > 4) {
 				digits[3]++;
+			}
+		}
+		curDigit++;
+
+		if (curDigit < 4) {
+			digits[curDigit] = int(num * 100) % 10;
+			if (curDigit == 3) {
+				roundUp = int(num * 1000) % 10;
+				// Round up the last digit
+				if (roundUp > 4) {
+					digits[3]++;
+				}
 			}
 		}
 	}
@@ -1601,7 +1631,7 @@ void printLargeNumber( float num, uint8_t decimalPlaces, bool leadingZero )
 
 	// Display each digit
 	for ( uint8_t i = 0; i < 4; i++ ) {
-		if (decimal == i) {
+		if (0 != decimalPlaces && decimal == i) {
 			// Print the decimal point
 			lcd.write(B00101110);
 			lcd.setCursor(x, 0);
@@ -1611,7 +1641,10 @@ void printLargeNumber( float num, uint8_t decimalPlaces, bool leadingZero )
 
 		// Check if we are showing leading zeros
 		if (0 == digits[i]) {
-			if ( 3 == i || 2 == i || (1 == i && (2 == decimalPlaces || 100 <= num)) || ( leadingZero && ((0 == i && 100 > num) || (1 == i && 10 > num)) ) ) {
+			if ( 3 == i 
+				|| 2 == i && (leadingZero || 0 != decimalPlaces)
+				|| (1 == i && ((0 != decimalPlaces && (2 == decimalPlaces || 100 <= num)) || 0 == decimalPlaces && leadingZero))
+				|| ( leadingZero && ((0 == i && (0 == decimalPlaces || 100 > num)) || (1 == i && 10 > num)) ) ) {
 				printLargeDigit(digits[i]);
 			}
 		} else {
