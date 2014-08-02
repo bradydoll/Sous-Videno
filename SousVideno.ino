@@ -245,6 +245,7 @@ unsigned long menuReturn = 0;
 
 // Run PID
 bool runPID = false;
+bool pausePID = false;
 
 // ************************************************
 // Button variables and constants
@@ -256,6 +257,7 @@ bool runPID = false;
 uint8_t buttons = 0;
 // Delay interval for button registration
 const unsigned long selectInterval = 90;
+unsigned long pauseLast = 0;
 // Previous states of buttons
 bool buttonStates[5] = {
 	false,	// BUTTON_LEFT
@@ -575,6 +577,7 @@ void changeMode( uint8_t newMode )
 				myPID.SetMode(AUTOMATIC);
 				windowStartTime = millis();
 				runPID = true;
+				pausePID = false;
 			}
 			previousInterval = currentMillis;
 			cycleDisplay = SHOW_TEMP;
@@ -795,6 +798,8 @@ void displayMenu( uint8_t menu )
 				if (runPID) {
 					if (tuning) {
 						lcd.print(F("Tuning"));
+					} else if (pausePID) {
+						lcd.print(F("Paused"));
 					} else {
 						lcd.print(F("Running"));
 					}
@@ -907,10 +912,15 @@ void Run() {
 				lcd.setCursor(CHARS - 1, 0);
 				if (tuning) {
 					lcd.print(F("T"));
+				} else if (pausePID) {
+					lcd.print(F("P"));
 				} else {
 					lcd.write(BLANK);
 				}
 			}
+		} else if (!tuning && buttons & BUTTON_UP && buttons & BUTTON_DOWN && (currentMillis - pauseLast) > selectInterval) {
+			pausePID = !pausePID;
+			pauseLast = currentMillis;
 		}
 	} else {
 		for (uint8_t i = 0; i < 5; i++) {
@@ -966,6 +976,8 @@ void Run() {
 			lcd.setCursor(CHARS - 1, 0);
 			if (tuning) {
 				lcd.print(F("T"));
+			} else if (pausePID) {
+				lcd.print(F("P"));
 			} else {
 				lcd.write(BLANK);
 			}
@@ -1003,6 +1015,7 @@ void Run() {
 ///
 void turnOff() {
 	runPID = false;
+	pausePID = false;
 
 	myPID.SetMode(MANUAL);
 	// Turn off the relay
@@ -1019,7 +1032,7 @@ void doControl() {
 		if (aTune.Runtime()) {	// returns 'true' when done
 			FinishAutoTune();
 		}
-	} else {
+	} else if (!pausePID) {
 		// TODO: Add feed forward/quick heat mode
 		myPID.Compute();
 	}
@@ -1035,6 +1048,12 @@ void doControl() {
 		Serial.print(Output);
 		Serial.print(",");
 		Serial.print(Setpoint);
+		
+		if (pausePID) {
+			Serial.println(",1");
+		} else {
+			Serial.println(",0");
+		}
 
 		lastLogTime = currentMillis;
 	}
@@ -1066,7 +1085,7 @@ void displayTemp() {
 	// Periodically log to the serial port in CSV format
 	if (currentMillis - lastLogTime > logInterval) {
 		Serial.print(Input);
-		Serial.println(",0,0");
+		Serial.println(",0,0,0");
 
 		lastLogTime = currentMillis;
 	}
