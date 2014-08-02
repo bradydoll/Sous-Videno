@@ -24,6 +24,7 @@
 // Analog 4 & 5			I2C (LCD Shield)
 // Digital 2, 3, 4		DS18B20 Temperature Sensor
 // Digital 7			Output control relay
+// Digital 8			Pump control relay (optional)
 //------------------------------------------------------------------
 
 
@@ -38,6 +39,10 @@
 
 // Support color LCD backlight
 #define COLOR true		// Comment for monochrome backlight
+
+// Support for water pump
+// TODO: Pump support
+//#define PUMP true
 
 // Enable serial logging
 #define LOGGING true	// Comment to disable logging
@@ -201,6 +206,16 @@ uint8_t x = 0;
 // Output Relay
 #define RelayPin 7
 
+// Optional pump support
+#if defined(PUMP)
+// Pump control relay pin
+#define PumpRelayPin 8
+
+const int pumpTimes[2] = {
+	6000,	// 6 seconds
+	30000,	// 30 seconds
+};
+#endif
 
 
 // ************************************************
@@ -220,7 +235,11 @@ unsigned long lastLogTime = 0;
 
 // Maximum number of menu items
 const int MENU_MAX = 4;
+#if defined(PUMP)
+const int SETTINGS_MENU_MAX = 7;
+#else
 const int SETTINGS_MENU_MAX = 6;
+#endif
 const int TUNE_MENU_MAX = 11;
 
 // Menu timeout
@@ -233,7 +252,10 @@ enum mode {
 	DISPLAY_TEMP,
 	SETTINGS,		// <-- end Main menu
 	CHOOSE_UNITS,	// --> begin Settings menu
-	TUNING,			// <-- end Settings menu
+	TUNING,
+#if defined(PUMP)
+	PUMP_CONTROL,	// <-- end Settings menu
+#endif
 	TUNE_KP,		// --> begin Tuning menu
 	TUNE_KI,
 	TUNE_KD,
@@ -448,6 +470,12 @@ void setup()
 	TIMSK2 |= 1<<TOIE2;
 
 	myPID.SetMode(MANUAL);
+
+#if defined(PUMP)
+	// Initialize Pump Relay control 
+	pinMode(PumpRelayPin, OUTPUT);		// Output mode to drive relay
+	digitalWrite(PumpRelayPin, LOW);	// Make sure it is off to start
+#endif
 
 	// Delay for splash screen
 	delay(3000);
@@ -842,6 +870,14 @@ void displayMenu( uint8_t menu )
 				lcd.setCursor(x, 1);
 				lcd.print(F("Tuning"));
 				break;
+// Check if we have pump control support
+#if defined(PUMP)
+			case PUMP_CONTROL:
+				lcd.print(F("Pump"));
+				lcd.setCursor(x, 1);
+				lcd.print(F("Control"));
+				break;
+#endif
 		// Tuning Menu
 			case TUNE_KP:
 				lcd.print(F("Tune"));
