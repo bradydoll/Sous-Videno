@@ -233,7 +233,7 @@ enum mode {
 	DISPLAY_TEMP,
 	SETTINGS,		// <-- end Main menu
 	CHOOSE_UNITS,	// --> begin Settings menu
-	TUNING,			// // <-- end Settings menu
+	TUNING,			// <-- end Settings menu
 	TUNE_KP,		// --> begin Tuning menu
 	TUNE_KI,
 	TUNE_KD,
