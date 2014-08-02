@@ -125,12 +125,12 @@ PID_ATune aTune(&Input, &Output);
 
 // Backlight colors
 #if defined(COLOR)
-	#define RED 0x1
-	#define YELLOW 0x3
-	#define GREEN 0x2
-	#define TEAL 0x6
-	#define BLUE 0x4
-	#define VIOLET 0x5
+#define RED 0x1
+#define YELLOW 0x3
+#define GREEN 0x2
+#define TEAL 0x6
+#define BLUE 0x4
+#define VIOLET 0x5
 #endif
 #define WHITE 0x7
 
@@ -209,8 +209,8 @@ uint8_t x = 0;
 
 // Optional logging support
 #if defined(LOGGING)
-	const int logInterval = 10000; // log every 10 seconds
-	unsigned long lastLogTime = 0;
+const int logInterval = 10000; // log every 10 seconds
+unsigned long lastLogTime = 0;
 #endif
 
 
@@ -220,7 +220,7 @@ uint8_t x = 0;
 
 // Maximum number of menu items
 const int MENU_MAX = 4;
-const int SETTINGS_MENU_MAX = 7;
+const int SETTINGS_MENU_MAX = 6;
 const int TUNE_MENU_MAX = 11;
 
 // Menu timeout
@@ -233,8 +233,7 @@ enum mode {
 	DISPLAY_TEMP,
 	SETTINGS,		// <-- end Main menu
 	CHOOSE_UNITS,	// --> begin Settings menu
-	TUNING,
-	PUMP_CONTROL,	// <-- end Settings menu
+	TUNING,			// <-- end Settings menu
 	TUNE_KP,		// --> begin Tuning menu
 	TUNE_KI,
 	TUNE_KD,
@@ -761,7 +760,7 @@ void displayMenu( uint8_t menu )
 		max = MENU_MAX;
 	} else if (SETTINGS == menu) {
 		min = MENU_MAX + 1;
-		max = SETTINGS_MENU_MAX - 1;
+		max = SETTINGS_MENU_MAX;
 	} else if (TUNING == menu) {
 		min = SETTINGS_MENU_MAX + 1;
 		max = TUNE_MENU_MAX;
@@ -1034,6 +1033,9 @@ void doControl() {
 		Serial.print(Input);
 		Serial.print(",");
 		Serial.print(Output);
+		Serial.print(",");
+		Serial.print(Setpoint);
+
 		lastLogTime = currentMillis;
 	}
 #endif
@@ -1059,6 +1061,16 @@ void displayTemp() {
 	getTemp(celsius);
 
 	printTemp(currentTemp, celsius, false, true, 2);
+
+#if defined(LOGGING)
+	// Periodically log to the serial port in CSV format
+	if (currentMillis - lastLogTime > logInterval) {
+		Serial.print(Input);
+		Serial.println(",0,0");
+
+		lastLogTime = currentMillis;
+	}
+#endif
 }
 
 ///
