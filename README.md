@@ -18,7 +18,7 @@ The code is a direct drop-in replacement, with a number of additional features:
 Instructions
 ------------
 
-###Build
+### Build
 
 1. Download.
 2. Install Required 3rd Party Libraries:
@@ -28,7 +28,7 @@ Instructions
 3. Assemble hardware according to the [Adafruit Sous-Vide controller tutorial](http://learn.adafruit.com/sous-vide-powered-by-arduino-the-sous-viduino).
 4. Build and Deply.
  
-###Usage
+### Usage
 
 On first boot you will be brought to the main menu (You will get an error screen if the temperature sensor is not detected).
 To navigate the menus use the UP and DOWN buttons.  To select a menu item use the RIGHT button.
